@@ -41,6 +41,8 @@
     "jest": "^27.3.1",
     "lint-staged": "^11.0.1",
     "prettier": "^2.3.2",
+    "snarkyjs-pack": "^0.2.3-beta4",
+    "totp-generator-ts": "^1.0.3",
     "ts-jest": "^27.0.7",
     "typescript": "^4.7.2"
   },
@@ -48,5 +50,3 @@
     "snarkyjs": "0.12.*"
   }
 }
-
-
