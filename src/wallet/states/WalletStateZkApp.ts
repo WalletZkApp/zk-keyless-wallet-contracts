@@ -130,7 +130,7 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
         BigInt(DEFAULT_PERIOD),
         BigInt(DEFAULT_TRANSACTION_LIMIT),
         BigInt(DEFAULT_DAILY_LIMIT),
-        0n,
+        BigInt(0),
       ])
     );
   }
