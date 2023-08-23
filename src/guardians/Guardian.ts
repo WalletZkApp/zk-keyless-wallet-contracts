@@ -40,19 +40,6 @@ export class Guardian extends Struct({
   }
 
   /**
-   * @notice Set the nullifier message of the guardian
-   * @param newNullifierMessage: Field, a new nullifier message of the guardian
-   * @returns Guardian, a guardian object with updated nullifier message
-   */
-  setNullifierMessage(newNullifierMessage: Field) {
-    return new Guardian({
-      publicKey: this.publicKey,
-      nullifierMessage: newNullifierMessage,
-      isVoted: this.isVoted,
-    });
-  }
-
-  /**
    * @notice Set the isVoted of the guardian
    * @returns Guardian, a guardian object with updated isVoted
    */
@@ -63,4 +50,13 @@ export class Guardian extends Struct({
       isVoted: Bool(true),
     });
   }
+}
+
+async function main() {
+  console.log('------TESTING Guardian------');
+}
+// check command line arg
+let args = process.argv[2];
+if (!args) {
+  await main();
 }

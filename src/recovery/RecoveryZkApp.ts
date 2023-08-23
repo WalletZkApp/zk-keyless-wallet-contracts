@@ -18,8 +18,8 @@ import {
 import { Guardian } from '../guardians/Guardian.js';
 import { RECOVERY_STATUS } from '../constant.js';
 import { WalletZkApp } from '../wallet/WalletZkApp.js';
-import { GuardianWitness } from '../guardians/GuardianZkApp.js';
 import { Nominee } from '../nominees/Nominee.js';
+import { MerkleWitness8 } from '../storage/offchain-storage.js';
 
 export { IRecoveryZkApp, RecoveryZkApp };
 
@@ -30,14 +30,14 @@ type IRecoveryZkApp = {
     walletZkAppInput: PublicKey,
     guardianKey: PrivateKey,
     guardian: Guardian,
-    path: GuardianWitness,
+    path: MerkleWitness8,
     nominee: PublicKey
   ): Bool;
   vote(
     walletZkAppInput: PublicKey,
     guardianKey: PrivateKey,
     guardian: Guardian,
-    voterPath: GuardianWitness
+    voterPath: MerkleWitness8
   ): Bool;
   tally(walletZkAppInput: PublicKey): Bool;
   end(sender: PublicKey): Bool;
@@ -159,7 +159,7 @@ class RecoveryZkApp extends SmartContract implements IRecoveryZkApp {
     walletZkAppInput: PublicKey,
     guardianKey: PrivateKey,
     guardian: Guardian,
-    path: GuardianWitness,
+    path: MerkleWitness8,
     nominee: PublicKey
   ): Bool {
     const status = this.status.getAndAssertEquals();
@@ -211,7 +211,7 @@ class RecoveryZkApp extends SmartContract implements IRecoveryZkApp {
     walletZkAppInput: PublicKey,
     guardianKey: PrivateKey,
     guardian: Guardian,
-    voterPath: GuardianWitness
+    voterPath: MerkleWitness8
   ): Bool {
     const status = this.status.getAndAssertEquals();
     status.assertEquals(Field(RECOVERY_STATUS.STARTED));

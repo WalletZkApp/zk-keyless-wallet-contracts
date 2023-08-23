@@ -20,7 +20,7 @@ import { WalletZkApp } from '../WalletZkApp.js';
 import { WalletStateZkApp, PackedLimits } from './WalletStateZkApp.js';
 import { Password } from '../../passwords/index.js';
 import { MerkleWitnessClass } from '../../general.js';
-import { DEFAULT_NULLIFIER_MESSAGE } from '../../constant.js';
+import { DEFAULT_NULLIFIER } from '../../constant.js';
 import { Otp } from '../../otps/index.js';
 
 let proofsEnabled = false;
@@ -70,7 +70,7 @@ describe('WalletState', () => {
     for (let i = 0; i < 5; i++) {
       const password = Password.from(
         Field(i + 1),
-        DEFAULT_NULLIFIER_MESSAGE,
+        DEFAULT_NULLIFIER,
         UInt64.from(i + 1),
         Field(SALT)
       );
@@ -175,8 +175,13 @@ describe('WalletState', () => {
       await txn.prove();
       await txn.sign([zkAppPrivateKey]).send();
 
-      const transactionLimit = await walletStatesZkApp.getTransactionLimit();
-      expect(transactionLimit).toEqual(UInt64.from(100));
+      const packedLimits = await walletStatesZkApp.getPackedLimits();
+      expect(packedLimits).toEqual([
+        UInt64.from(DEFAULT_PERIOD),
+        UInt64.from(100),
+        UInt64.from(DEFAULT_DAILY_LIMIT),
+        UInt64.from(0),
+      ]);
     });
   });
   describe('#setDailyLimit', () => {
@@ -207,8 +212,13 @@ describe('WalletState', () => {
       await txn.prove();
       await txn.sign([zkAppPrivateKey]).send();
 
-      const dailyLimit = await walletStatesZkApp.getDailyLimit();
-      expect(dailyLimit).toEqual(UInt64.from(100));
+      const packedLimits = await walletStatesZkApp.getPackedLimits();
+      expect(packedLimits).toEqual([
+        UInt64.from(DEFAULT_PERIOD),
+        UInt64.from(DEFAULT_TRANSACTION_LIMIT),
+        UInt64.from(100),
+        UInt64.from(0),
+      ]);
     });
   });
   describe('#pause', () => {

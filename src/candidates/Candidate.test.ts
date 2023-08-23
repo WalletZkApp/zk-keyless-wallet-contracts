@@ -1,10 +1,7 @@
 import { Field, MerkleTree, PrivateKey } from 'snarkyjs';
 import { Guardian } from '../guardians/Guardian.js';
 import { Candidate } from './Candidate.js';
-import {
-  DEFAULT_NULLIFIER_MESSAGE,
-  MAX_MERKLE_TREE_HEIGHT,
-} from '../constant.js';
+import { DEFAULT_NULLIFIER, MAX_MERKLE_TREE_HEIGHT } from '../constant.js';
 import { MerkleWitnessClass } from '../general.js';
 
 describe('Candidate', () => {
@@ -13,10 +10,7 @@ describe('Candidate', () => {
     it('create new candidates', async () => {
       for (let i = 0; i < 8; i++) {
         const guardianAccount = PrivateKey.random().toPublicKey();
-        const guardian = Guardian.from(
-          guardianAccount,
-          DEFAULT_NULLIFIER_MESSAGE
-        );
+        const guardian = Guardian.from(guardianAccount, DEFAULT_NULLIFIER);
         candidatesTree.setLeaf(BigInt(i), guardian.hash());
       }
       const candidates = Array.from({ length: 5 }, (_, i) =>
@@ -32,10 +26,7 @@ describe('Candidate', () => {
   describe('#addVote', () => {
     it('add a vote to a candidate', async () => {
       const guardianAccount = PrivateKey.random().toPublicKey();
-      const guardian = Guardian.from(
-        guardianAccount,
-        DEFAULT_NULLIFIER_MESSAGE
-      );
+      const guardian = Guardian.from(guardianAccount, DEFAULT_NULLIFIER);
       candidatesTree.setLeaf(BigInt(0), guardian.hash());
 
       const candidate = Candidate.from(

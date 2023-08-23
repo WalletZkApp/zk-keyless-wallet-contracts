@@ -16,17 +16,14 @@ import {
 } from 'snarkyjs';
 // import { WALLET_STATUS } from '../constant';
 import { WalletStateZkApp } from './states/index.js';
-import {
-  Guardian,
-  GuardianWitness,
-  GuardianZkApp,
-} from '../guardians/index.js';
+import { Guardian, GuardianZkApp } from '../guardians/index.js';
 import { MerkleWitnessClass } from '../general.js';
 import { Password } from '../passwords/index.js';
 import { PackedLimits } from './states/WalletStateZkApp.js';
 import { RecoveryZkApp } from '../recovery/index.js';
 import { Otp } from '../otps/index.js';
 import { RECOVERY_STATUS } from '../constant.js';
+import { MerkleWitness8 } from '../storage/offchain-storage.js';
 
 export { WalletZkApp, IWalletZkApp };
 
@@ -40,7 +37,7 @@ type IWalletZkApp = {
     otp: Otp,
     guardian: Guardian,
     path: MerkleWitnessClass,
-    guardianPath: GuardianWitness
+    guardianPath: MerkleWitness8
   ): Bool; // emits "GuardianAdded" event
   addGuardians(
     otp: Otp,
@@ -234,7 +231,7 @@ class WalletZkApp extends SmartContract implements IWalletZkApp {
   }
 
   @method
-  public verifyGuardian(guardian: Guardian, path: GuardianWitness): Bool {
+  public verifyGuardian(guardian: Guardian, path: MerkleWitness8): Bool {
     const commitment = this.committedGuardians.getAndAssertEquals();
     commitment.assertEquals(path.calculateRoot(guardian.hash()));
 
@@ -254,12 +251,12 @@ class WalletZkApp extends SmartContract implements IWalletZkApp {
     otp: Otp,
     guardian: Guardian,
     path: MerkleWitnessClass,
-    guardianPath: GuardianWitness
+    guardianPath: MerkleWitness8
   ): Bool {
     this.verifyOtp(otp, path);
     // we want to verify if the guardian is registered in the guardian zkapp
-    const guardianZkApp = new GuardianZkApp(guardianZkAppAddress);
-    guardianZkApp.verifyGuardian(guardian, guardianPath);
+    // const guardianZkApp = new GuardianZkApp(guardianZkAppAddress);
+    // guardianZkApp.verifyGuardian(guardian.publicKey, guardian.nullifierMessage, guardianPath);
 
     this.committedGuardians.getAndAssertEquals();
 

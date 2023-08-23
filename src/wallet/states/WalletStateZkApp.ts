@@ -123,7 +123,6 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
     });
     this.paused.set(Bool(false));
 
-    //this.currentPeriodEnd.set(UInt64.from(0));
     // period, transactionLimit, dailyLimit, currentPeriodAmount are packed into a single state variable
     this.packedLimits.set(
       PackedLimits.fromBigInts([
@@ -144,6 +143,7 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
    */
   @method
   onlyOwner(sender: PublicKey) {
+    this.sender.assertEquals(sender);
     const owner = this.owner.getAndAssertEquals();
     owner.assertEquals(sender);
   }
@@ -166,15 +166,20 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
     this.paused.get().assertTrue();
   }
 
+  @method
+  public getPackedLimits(): UInt32[] {
+    const packedLimits: PackedLimits = this.packedLimits.getAndAssertEquals();
+    const unpacked: UInt32[] = PackedLimits.unpack(packedLimits.packed);
+    packedLimits.packed.assertEquals(PackedLimits.pack(unpacked));
+    return unpacked;
+  }
+
   /**
    * @returns the current period
    */
   @method
-  getPeriod(): UInt32 {
-    const packedLimits: PackedLimits = this.packedLimits.getAndAssertEquals();
-    const unpacked: UInt32[] = PackedLimits.unpack(packedLimits.packed);
-    packedLimits.packed.assertEquals(PackedLimits.pack(unpacked));
-    return unpacked[0];
+  public getPeriod(): UInt32 {
+    return this.getPackedLimits()[0];
   }
 
   /**
@@ -182,10 +187,7 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
    */
   @method
   getTransactionLimit(): UInt32 {
-    const packedLimits: PackedLimits = this.packedLimits.getAndAssertEquals();
-    const unpacked: UInt32[] = PackedLimits.unpack(packedLimits.packed);
-    packedLimits.packed.assertEquals(PackedLimits.pack(unpacked));
-    return unpacked[1];
+    return this.getPackedLimits()[1];
   }
 
   /**
@@ -193,10 +195,7 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
    */
   @method
   getDailyLimit(): UInt32 {
-    const packedLimits: PackedLimits = this.packedLimits.getAndAssertEquals();
-    const unpacked: UInt32[] = PackedLimits.unpack(packedLimits.packed);
-    packedLimits.packed.assertEquals(PackedLimits.pack(unpacked));
-    return unpacked[2];
+    return this.getPackedLimits()[2];
   }
 
   /**
@@ -204,10 +203,7 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
    */
   @method
   getCurrentPeriodAmount(): UInt32 {
-    const packedLimits: PackedLimits = this.packedLimits.getAndAssertEquals();
-    const unpacked: UInt32[] = PackedLimits.unpack(packedLimits.packed);
-    packedLimits.packed.assertEquals(PackedLimits.pack(unpacked));
-    return unpacked[3];
+    return this.getPackedLimits()[3];
   }
 
   /**
@@ -217,8 +213,7 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
    */
   @method
   public pause(sender: PublicKey): Bool {
-    //this.sender.assertEquals(sender);
-    //this.onlyOwner(sender);
+    this.onlyOwner(sender);
 
     this.paused.getAndAssertEquals();
     this.paused.set(Bool(true));
@@ -235,8 +230,7 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
    */
   @method
   public unpause(sender: PublicKey): Bool {
-    //this.sender.assertEquals(sender);
-    //this.onlyOwner(sender);
+    this.onlyOwner(sender);
 
     this.paused.getAndAssertEquals();
     this.paused.set(Bool(false));
@@ -257,8 +251,7 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
     sender: PublicKey,
     newTransactionLimit: UInt32
   ): Bool {
-    //this.sender.assertEquals(sender);
-    //this.onlyOwner(sender);
+    this.onlyOwner(sender);
 
     const packedLimits: PackedLimits = this.packedLimits.getAndAssertEquals();
     const unpacked: UInt32[] = PackedLimits.unpack(packedLimits.packed);
@@ -284,8 +277,7 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
    */
   @method
   public setDailyLimit(sender: PublicKey, newDailyLimit: UInt32): Bool {
-    //this.sender.assertEquals(sender);
-    //this.onlyOwner(sender);
+    this.onlyOwner(sender);
 
     const packedLimits: PackedLimits = this.packedLimits.getAndAssertEquals();
     const unpacked: UInt32[] = PackedLimits.unpack(packedLimits.packed);
@@ -314,8 +306,7 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
     sender: PublicKey,
     newCurrentPeriodAmount: UInt32
   ): Bool {
-    //this.sender.assertEquals(sender);
-    //this.onlyOwner(sender);
+    this.onlyOwner(sender);
 
     const packedLimits: PackedLimits = this.packedLimits.getAndAssertEquals();
     const unpacked: UInt32[] = PackedLimits.unpack(packedLimits.packed);
@@ -330,8 +321,7 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
 
   @method
   updatePackedLimits(sender: PublicKey, newPackedLimits: PackedLimits): Bool {
-    //this.sender.assertEquals(sender);
-    //this.onlyOwner(sender);
+    this.onlyOwner(sender);
 
     this.packedLimits.getAndAssertEquals();
     this.packedLimits.set(newPackedLimits);
@@ -343,30 +333,28 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
    * @param sender the sender of the transaction
    * @param timestamp current timestamp
    */
-  // @method
-  // updatePeriod(sender: PublicKey) {
-  //   this.sender.assertEquals(sender);
-  //   this.onlyOwner(sender);
-  //   const now = this.network.timestamp.getAndAssertEquals();
+  @method
+  updatePeriod(sender: PublicKey) {
+    this.onlyOwner(sender);
 
-  //   const currentPeriodEnd = this.currentPeriodEnd.getAndAssertEquals();
-  //   currentPeriodEnd.assertLessThanOrEqual(now);
-  //   const packedLimits: PackedLimits = this.packedLimits.getAndAssertEquals();
-  //   const unpacked: UInt32[] = PackedLimits.unpack(packedLimits.packed);
+    const now = this.network.timestamp.getAndAssertEquals();
 
-  //   const period: UInt64 = unpacked[0].toUInt64();
+    const currentPeriodEnd = this.currentPeriodEnd.getAndAssertEquals();
+    currentPeriodEnd.assertLessThanOrEqual(now);
+    const packedLimits: PackedLimits = this.packedLimits.getAndAssertEquals();
+    const unpacked: UInt32[] = PackedLimits.unpack(packedLimits.packed);
 
-  //   if (currentPeriodEnd < period) {
+    const period: UInt64 = unpacked[0].toUInt64();
 
-  //   }
-  //   // only update the period if the current period has ended
-  //   // period.add(now).get().assertLessThanOrEqual(now);
-
-  //   // this.currentPeriodEnd.set(period.add(now));
-  //   // unpacked[3] = UInt32.from(0);
-  //   // const newPackedLimits: PackedLimits = PackedLimits.fromAuxiliary(unpacked);
-  //   // this.packedLimits.set(newPackedLimits);
-  // }
+    if (currentPeriodEnd < period) {
+      //       // only update the period if the current period has ended
+      // period.add(now).get().assertLessThanOrEqual(now);
+      // this.currentPeriodEnd.set(period.add(now));
+      // unpacked[3] = UInt32.from(0);
+      // const newPackedLimits: PackedLimits = PackedLimits.fromAuxiliary(unpacked);
+      // this.packedLimits.set(newPackedLimits);
+    }
+  }
 
   /**
    * @notice Transfer ownership of the contract to a new account (`newOwner`).
@@ -377,12 +365,11 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
    */
   @method
   public transferOwnership(sender: PublicKey, newOwner: PublicKey): Bool {
-    this.sender.assertEquals(sender);
-    const owner = this.owner.getAndAssertEquals();
-    owner.assertEquals(sender);
+    this.onlyOwner(sender);
+
     this.owner.set(newOwner);
     this.emitEvent('OwnershipTransferred', {
-      previousOwner: owner,
+      previousOwner: sender,
       newOwner: newOwner,
     });
     return Bool(true);
@@ -398,7 +385,6 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
     sender: PublicKey,
     verificationKey: VerificationKey
   ) {
-    this.sender.assertEquals(sender);
     this.onlyOwner(sender);
 
     const currentVerificationKey = this.account.verificationKey;

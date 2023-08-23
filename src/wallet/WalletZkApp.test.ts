@@ -12,7 +12,7 @@ import {
 import { TokenGenerator } from 'totp-generator-ts';
 import {
   DEFAULT_DAILY_LIMIT,
-  DEFAULT_NULLIFIER_MESSAGE,
+  DEFAULT_NULLIFIER,
   DEFAULT_TRANSACTION_LIMIT,
   RECOVERY_STATUS,
   DEFAULT_PERIOD,
@@ -20,11 +20,7 @@ import {
   TEST_TOTP_SECRET,
 } from '../constant';
 import { MerkleWitnessClass } from '../general';
-import {
-  Guardian,
-  GuardianWitness,
-  GuardianZkApp,
-} from '../guardians/index.js';
+import { Guardian, GuardianZkApp } from '../guardians/index.js';
 import { Candidate, CandidateWitness } from '../candidates/index.js';
 import { WalletZkApp } from './WalletZkApp.js';
 import { Password } from '../passwords/index.js';
@@ -32,6 +28,7 @@ import { WalletStateZkApp } from './states/index.js';
 import { RecoveryZkApp } from '../recovery/index.js';
 import { PackedLimits } from './states/WalletStateZkApp.js';
 import { Otp } from '../otps/index.js';
+import { MerkleWitness8, MerkleWitness32 } from '../storage/offchain-storage';
 
 let proofsEnabled = false;
 
@@ -119,7 +116,7 @@ describe('WalletZkApp', () => {
     for (let i = 0; i < 5; i++) {
       const password = Password.from(
         Field(i + 1),
-        DEFAULT_NULLIFIER_MESSAGE,
+        DEFAULT_NULLIFIER,
         UInt64.from(i + 1),
         Field(SALT)
       );
@@ -170,8 +167,8 @@ describe('WalletZkApp', () => {
       guardianZkApp.committedGuardians.getAndAssertEquals();
     expect(committedGuardians).toEqual(Field(0));
 
-    const counter = guardianZkApp.counter.getAndAssertEquals();
-    expect(counter).toEqual(Field(0));
+    const counters: UInt32[] = guardianZkApp.getCounters();
+    expect(counters).toEqual([UInt32.from(0), UInt32.from(0)]);
   });
   it('generates and deploys the `RecoveryZkApp` smart contract', async () => {
     await localDeploy();
@@ -236,7 +233,7 @@ describe('WalletZkApp', () => {
 
       let password = Password.from(
         Field(1),
-        DEFAULT_NULLIFIER_MESSAGE,
+        DEFAULT_NULLIFIER,
         UInt64.from(1),
         Field(SALT)
       );
@@ -247,7 +244,7 @@ describe('WalletZkApp', () => {
 
       password = Password.from(
         Field(2),
-        DEFAULT_NULLIFIER_MESSAGE,
+        DEFAULT_NULLIFIER,
         UInt64.from(2),
         Field(SALT)
       );
@@ -257,25 +254,23 @@ describe('WalletZkApp', () => {
       expect(result).toEqual(Bool(true));
     });
   });
-  describe('addGuardian', () => {
+  describe('#addGuardian', () => {
     it('should able to add a guardian', async () => {
       await localDeploy();
 
-      const guardian = Guardian.from(
-        guardian1Account,
-        DEFAULT_NULLIFIER_MESSAGE
-      );
+      const guardian = Guardian.from(guardian1Account, DEFAULT_NULLIFIER);
       guardianTree.setLeaf(0n, guardian.hash());
 
-      const tx = await Mina.transaction(deployerAccount, () => {
-        guardianZkApp.addGuardian(
-          deployerAccount,
-          guardian,
-          guardianTree.getRoot()
-        );
-      });
-      await tx.prove();
-      await tx.sign([deployerKey]).send();
+      _registerGuardian(guardian1Key, guardian.hash(), guardianTree.getRoot());
+
+      // const tx = await Mina.transaction(deployerAccount, () => {
+      //   guardianZkApp.registerGuardian(
+      //     guardian.hash(),
+      //     guardianTree.getRoot()
+      //   );
+      // });
+      // await tx.prove();
+      // await tx.sign([deployerKey]).send();
 
       time = startTime + 0 * 30000;
       const tokenGen = new TokenGenerator({
@@ -290,8 +285,8 @@ describe('WalletZkApp', () => {
       let w = otpTree.getWitness(0n);
       let witness = new MerkleWitnessClass(w);
 
-      let wGuardian = guardianTree.getWitness(0n);
-      let guardianWitness = new GuardianWitness(wGuardian);
+      let w2 = guardianTree.getWitness(0n);
+      let witness2 = new MerkleWitness8(w2);
 
       const txn = await Mina.transaction(zkAppAddress, () => {
         zkApp.addGuardian(
@@ -299,7 +294,7 @@ describe('WalletZkApp', () => {
           otp,
           guardian,
           witness,
-          guardianWitness
+          witness2
         );
       });
       await txn.prove();
@@ -466,8 +461,13 @@ describe('WalletZkApp', () => {
       await txn.prove();
       await txn.sign([zkAppPrivateKey]).send();
 
-      const transactionLimit = await walletStatesZkApp.getTransactionLimit();
-      expect(transactionLimit).toEqual(UInt64.from(100));
+      const packedLimits = await walletStatesZkApp.getPackedLimits();
+      expect(packedLimits).toEqual([
+        UInt64.from(DEFAULT_PERIOD),
+        UInt64.from(100),
+        UInt64.from(DEFAULT_DAILY_LIMIT),
+        UInt64.from(0),
+      ]);
     });
   });
   describe('#setDailyLimit', () => {
@@ -498,8 +498,13 @@ describe('WalletZkApp', () => {
       await txn.prove();
       await txn.sign([zkAppPrivateKey]).send();
 
-      const dailyLimit = await walletStatesZkApp.getDailyLimit();
-      expect(dailyLimit).toEqual(UInt32.from(100));
+      const packedLimits = await walletStatesZkApp.getPackedLimits();
+      expect(packedLimits).toEqual([
+        UInt64.from(DEFAULT_PERIOD),
+        UInt64.from(DEFAULT_TRANSACTION_LIMIT),
+        UInt64.from(100),
+        UInt64.from(0),
+      ]);
     });
   });
   describe('#pause', () => {
@@ -571,7 +576,7 @@ describe('WalletZkApp', () => {
 
       const password1 = Password.from(
         Field(1),
-        DEFAULT_NULLIFIER_MESSAGE,
+        DEFAULT_NULLIFIER,
         UInt64.from(1),
         Field(SALT)
       );
@@ -605,36 +610,40 @@ describe('WalletZkApp', () => {
     beforeEach(async () => {
       await localDeploy();
 
-      const guardian = Guardian.from(
-        guardian1Account,
-        DEFAULT_NULLIFIER_MESSAGE
-      );
+      const guardian = Guardian.from(guardian1Account, DEFAULT_NULLIFIER);
       guardianTree.setLeaf(0n, guardian.hash());
-      await _addGuardian(deployerAccount, guardian);
-      const guardian2 = Guardian.from(
-        guardian2Account,
-        DEFAULT_NULLIFIER_MESSAGE
+      await _registerGuardian(
+        guardian1Key,
+        guardian.hash(),
+        guardianTree.getRoot()
       );
+      const guardian2 = Guardian.from(guardian2Account, DEFAULT_NULLIFIER);
       guardianTree.setLeaf(1n, guardian2.hash());
-      await _addGuardian(deployerAccount, guardian2);
-      const guardian3 = Guardian.from(
-        guardian3Account,
-        DEFAULT_NULLIFIER_MESSAGE
+      await _registerGuardian(
+        guardian2Key,
+        guardian2.hash(),
+        guardianTree.getRoot()
       );
+      const guardian3 = Guardian.from(guardian3Account, DEFAULT_NULLIFIER);
       guardianTree.setLeaf(2n, guardian3.hash());
-      await _addGuardian(deployerAccount, guardian3);
-      const guardian4 = Guardian.from(
-        guardian4Account,
-        DEFAULT_NULLIFIER_MESSAGE
+      await _registerGuardian(
+        guardian3Key,
+        guardian3.hash(),
+        guardianTree.getRoot()
       );
+      const guardian4 = Guardian.from(guardian4Account, DEFAULT_NULLIFIER);
       guardianTree.setLeaf(3n, guardian4.hash());
-      await _addGuardian(deployerAccount, guardian4);
+      await _registerGuardian(
+        guardian4Key,
+        guardian4.hash(),
+        guardianTree.getRoot()
+      );
 
       const committedGuardians =
         await guardianZkApp.committedGuardians.getAndAssertEquals();
       expect(committedGuardians).toEqual(guardianTree.getRoot());
-      const counter = await guardianZkApp.counter.getAndAssertEquals();
-      expect(counter).toEqual(Field(4));
+      const counters = await guardianZkApp.getCounters();
+      expect(counters).toEqual([UInt32.from(4), UInt32.from(0)]);
 
       time = startTime + 0 * 30000;
       const tokenGen = new TokenGenerator({
@@ -663,13 +672,10 @@ describe('WalletZkApp', () => {
       expect(guardianCounter).toEqual(UInt32.from(4));
     });
     it('should able to start recovery by guardian', async () => {
-      const guardian = Guardian.from(
-        guardian1Account,
-        DEFAULT_NULLIFIER_MESSAGE
-      );
+      const guardian = Guardian.from(guardian1Account, DEFAULT_NULLIFIER);
 
       let w = guardianTree.getWitness(0n);
-      let witness = new GuardianWitness(w);
+      let witness = new MerkleWitness8(w);
 
       const txn2 = await Mina.transaction(guardian1Account, () => {
         AccountUpdate.createSigned(guardian1Account);
@@ -702,7 +708,7 @@ describe('WalletZkApp', () => {
 
       const password1 = Password.from(
         Field(1),
-        DEFAULT_NULLIFIER_MESSAGE,
+        DEFAULT_NULLIFIER,
         UInt64.from(1),
         Field(SALT)
       );
@@ -725,33 +731,40 @@ describe('WalletZkApp', () => {
     it('should able to tally after 50%+1 votes', async () => {
       await localDeploy();
 
-      let guardian = Guardian.from(guardian1Account, DEFAULT_NULLIFIER_MESSAGE);
+      const guardian = Guardian.from(guardian1Account, DEFAULT_NULLIFIER);
       guardianTree.setLeaf(0n, guardian.hash());
-      await _addGuardian(deployerAccount, guardian);
-      const guardian2 = Guardian.from(
-        guardian2Account,
-        DEFAULT_NULLIFIER_MESSAGE
+      await _registerGuardian(
+        guardian1Key,
+        guardian.hash(),
+        guardianTree.getRoot()
       );
+      const guardian2 = Guardian.from(guardian2Account, DEFAULT_NULLIFIER);
       guardianTree.setLeaf(1n, guardian2.hash());
-      await _addGuardian(deployerAccount, guardian2);
-      const guardian3 = Guardian.from(
-        guardian3Account,
-        DEFAULT_NULLIFIER_MESSAGE
+      await _registerGuardian(
+        guardian2Key,
+        guardian2.hash(),
+        guardianTree.getRoot()
       );
+      const guardian3 = Guardian.from(guardian3Account, DEFAULT_NULLIFIER);
       guardianTree.setLeaf(2n, guardian3.hash());
-      await _addGuardian(deployerAccount, guardian3);
-      const guardian4 = Guardian.from(
-        guardian4Account,
-        DEFAULT_NULLIFIER_MESSAGE
+      await _registerGuardian(
+        guardian3Key,
+        guardian3.hash(),
+        guardianTree.getRoot()
       );
+      const guardian4 = Guardian.from(guardian4Account, DEFAULT_NULLIFIER);
       guardianTree.setLeaf(3n, guardian4.hash());
-      await _addGuardian(deployerAccount, guardian4);
+      await _registerGuardian(
+        guardian4Key,
+        guardian4.hash(),
+        guardianTree.getRoot()
+      );
 
       const committedGuardians =
         await guardianZkApp.committedGuardians.getAndAssertEquals();
       expect(committedGuardians).toEqual(guardianTree.getRoot());
-      const counter = await guardianZkApp.counter.getAndAssertEquals();
-      expect(counter).toEqual(Field(4));
+      const counters = await guardianZkApp.getCounters();
+      expect(counters).toEqual([UInt32.from(4), UInt32.from(0)]);
 
       time = startTime + 0 * 30000;
       const tokenGen = new TokenGenerator({
@@ -780,7 +793,7 @@ describe('WalletZkApp', () => {
       expect(guardianCounter).toEqual(UInt32.from(4));
 
       let w = guardianTree.getWitness(0n);
-      let witness = new GuardianWitness(w);
+      let witness = new MerkleWitness8(w);
 
       const txn2 = await Mina.transaction(guardian1Account, () => {
         //AccountUpdate.createSigned(guardian1Account);
@@ -808,7 +821,7 @@ describe('WalletZkApp', () => {
       expect(newVoters).toEqual(guardianTree.getRoot());
 
       let w2 = guardianTree.getWitness(1n);
-      let witness2 = new GuardianWitness(w2);
+      let witness2 = new MerkleWitness8(w2);
 
       const txn3 = await Mina.transaction(guardian2Account, () => {
         recoveryZkApp.vote(zkAppAddress, guardian2Key, guardian2, witness2);
@@ -826,7 +839,7 @@ describe('WalletZkApp', () => {
       expect(newVoters).toEqual(guardianTree.getRoot());
 
       let w3 = guardianTree.getWitness(2n);
-      let witness3 = new GuardianWitness(w3);
+      let witness3 = new MerkleWitness8(w3);
 
       const txn4 = await Mina.transaction(guardian3Account, () => {
         recoveryZkApp.vote(zkAppAddress, guardian3Key, guardian3, witness3);
@@ -854,27 +867,34 @@ describe('WalletZkApp', () => {
     it('should able to recover', async () => {
       await localDeploy();
 
-      let guardian = Guardian.from(guardian1Account, DEFAULT_NULLIFIER_MESSAGE);
+      const guardian = Guardian.from(guardian1Account, DEFAULT_NULLIFIER);
       guardianTree.setLeaf(0n, guardian.hash());
-      await _addGuardian(deployerAccount, guardian);
-      const guardian2 = Guardian.from(
-        guardian2Account,
-        DEFAULT_NULLIFIER_MESSAGE
+      await _registerGuardian(
+        guardian1Key,
+        guardian.hash(),
+        guardianTree.getRoot()
       );
+      const guardian2 = Guardian.from(guardian2Account, DEFAULT_NULLIFIER);
       guardianTree.setLeaf(1n, guardian2.hash());
-      await _addGuardian(deployerAccount, guardian2);
-      const guardian3 = Guardian.from(
-        guardian3Account,
-        DEFAULT_NULLIFIER_MESSAGE
+      await _registerGuardian(
+        guardian2Key,
+        guardian2.hash(),
+        guardianTree.getRoot()
       );
+      const guardian3 = Guardian.from(guardian3Account, DEFAULT_NULLIFIER);
       guardianTree.setLeaf(2n, guardian3.hash());
-      await _addGuardian(deployerAccount, guardian3);
-      const guardian4 = Guardian.from(
-        guardian4Account,
-        DEFAULT_NULLIFIER_MESSAGE
+      await _registerGuardian(
+        guardian3Key,
+        guardian3.hash(),
+        guardianTree.getRoot()
       );
+      const guardian4 = Guardian.from(guardian4Account, DEFAULT_NULLIFIER);
       guardianTree.setLeaf(3n, guardian4.hash());
-      await _addGuardian(deployerAccount, guardian4);
+      await _registerGuardian(
+        guardian4Key,
+        guardian4.hash(),
+        guardianTree.getRoot()
+      );
 
       // const committedGuardians =
       //   await guardianZkApp.committedGuardians.getAndAssertEquals();
@@ -914,7 +934,7 @@ describe('WalletZkApp', () => {
       // expect(guardianCounter).toEqual(UInt32.from(4));
 
       let w = guardianTree.getWitness(0n);
-      let witness = new GuardianWitness(w);
+      let witness = new MerkleWitness8(w);
 
       const txn2 = await Mina.transaction(guardian1Account, () => {
         //AccountUpdate.createSigned(guardian1Account);
@@ -942,7 +962,7 @@ describe('WalletZkApp', () => {
       // expect(newVoters).toEqual(guardianTree.getRoot());
 
       let w2 = guardianTree.getWitness(1n);
-      let witness2 = new GuardianWitness(w2);
+      let witness2 = new MerkleWitness8(w2);
 
       const txn3 = await Mina.transaction(guardian2Account, () => {
         recoveryZkApp.vote(zkAppAddress, guardian2Key, guardian2, witness2);
@@ -960,7 +980,7 @@ describe('WalletZkApp', () => {
       // expect(newVoters).toEqual(guardianTree.getRoot());
 
       let w3 = guardianTree.getWitness(2n);
-      let witness3 = new GuardianWitness(w3);
+      let witness3 = new MerkleWitness8(w3);
 
       const txn4 = await Mina.transaction(guardian3Account, () => {
         recoveryZkApp.vote(zkAppAddress, guardian3Key, guardian3, witness3);
@@ -1008,11 +1028,16 @@ describe('WalletZkApp', () => {
       await txn6.sign([senderKey]).send();
     });
   });
-  async function _addGuardian(sender: PublicKey, guardian: Guardian) {
-    const tx = await Mina.transaction(deployerAccount, () => {
-      guardianZkApp.addGuardian(sender, guardian, guardianTree.getRoot());
+
+  async function _registerGuardian(
+    _senderKey: PrivateKey,
+    _guardianHash: Field,
+    _guardianRoot: Field
+  ) {
+    const tx = await Mina.transaction(_senderKey.toPublicKey(), () => {
+      guardianZkApp.registerGuardian(_guardianHash, _guardianRoot);
     });
     await tx.prove();
-    await tx.sign([deployerKey]).send();
+    await tx.sign([_senderKey]).send();
   }
 });

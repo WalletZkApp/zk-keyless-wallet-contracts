@@ -1,10 +1,5 @@
 import { Candidate } from './candidates/index.js';
-import {
-  Guardian,
-  GuardianZkApp,
-  GuardianZkAppUpdate,
-  GuardianWitness,
-} from './guardians/index.js';
+import { Guardian, GuardianZkApp } from './guardians/index.js';
 
 import { Password } from './passwords/Password.js';
 
@@ -33,8 +28,6 @@ export {
   MerkleWitnessClass,
   Guardian,
   GuardianZkApp,
-  GuardianZkAppUpdate,
-  GuardianWitness,
   IWalletStateZkApp,
   IWalletZkApp,
   Password,

@@ -1,7 +1,8 @@
 import { Field, UInt64 } from 'snarkyjs';
 
 export const MAX_MERKLE_TREE_HEIGHT = 32;
-export const DEFAULT_NULLIFIER_MESSAGE = Field(777);
+export const DEFAULT_NULLIFIER = Field(777);
+export const DEFAULT_NULLIFIER_MESSAGE = '777';
 export const RECOVERY_STATUS = {
   DEPLOYED: 0, // Contract is deployed, guardian and candidates are not yet set.
   STARTED: 1, // Election is started, vote_count of every candidate is 0 and nullifier for all guardian is DEFAULT_NULLIFIER.

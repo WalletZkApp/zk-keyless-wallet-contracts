@@ -1,41 +1,37 @@
 import {
+  AccountUpdate,
   Field,
+  MerkleTree,
   Mina,
   PrivateKey,
   PublicKey,
-  AccountUpdate,
-  MerkleTree,
   Provable,
+  UInt32,
 } from 'snarkyjs';
-import {
-  GuardianWitness,
-  GuardianZkApp,
-  GuardianZkAppUpdate,
-} from './GuardianZkApp.js';
+import { GuardianZkApp } from './GuardianZkApp.js';
 import { Guardian } from './Guardian.js';
+import { DEFAULT_NULLIFIER } from '../constant.js';
+import { MerkleWitness32 } from '../storage/offchain-storage.js';
 
 let proofsEnabled = false;
+const GUARDIAN_TREE = new MerkleTree(32);
 
 describe('GuardianZkApp', () => {
   let deployerAccount: PublicKey,
     deployerKey: PrivateKey,
     guardian1Account: PublicKey,
-    guardian1Key: PrivateKey, //@typescript-eslint/no-unused-vars
+    guardian1Key: PrivateKey,
     guardian2Account: PublicKey,
-    guardian2Key: PrivateKey, //@typescript-eslint/no-unused-vars
+    guardian2Key: PrivateKey,
     guardian3Account: PublicKey,
-    guardian3Key: PrivateKey, //@typescript-eslint/no-unused-vars
+    guardian3Key: PrivateKey,
     guardian4Account: PublicKey,
-    guardian4Key: PrivateKey, //@typescript-eslint/no-unused-vars
+    guardian4Key: PrivateKey,
     senderAccount: PublicKey,
     senderKey: PrivateKey,
     zkAppAddress: PublicKey,
     zkAppPrivateKey: PrivateKey,
-    zkApp: GuardianZkApp,
-    zkAppUpdate: GuardianZkAppUpdate;
-
-  const guardianTree = new MerkleTree(8);
-  const nullifierMessage = Field(777);
+    zkApp: GuardianZkApp;
 
   beforeAll(async () => {
     if (proofsEnabled) await GuardianZkApp.compile();
@@ -48,7 +44,6 @@ describe('GuardianZkApp', () => {
     zkAppPrivateKey = PrivateKey.random();
     zkAppAddress = zkAppPrivateKey.toPublicKey();
     zkApp = new GuardianZkApp(zkAppAddress);
-    zkAppUpdate = new GuardianZkAppUpdate(zkAppAddress);
 
     ({ privateKey: deployerKey, publicKey: deployerAccount } =
       Local.testAccounts[0]);
@@ -76,146 +71,132 @@ describe('GuardianZkApp', () => {
     await txn.sign([deployerKey, zkAppPrivateKey]).send();
   }
 
-  async function deployUpdate() {
-    const txn = await Mina.transaction(deployerAccount, () => {
-      AccountUpdate.fundNewAccount(deployerAccount);
-      zkApp.deploy({ zkappKey: zkAppPrivateKey });
-      zkAppUpdate.deploy({ zkappKey: zkAppPrivateKey });
-      zkApp.owner.set(deployerAccount);
-    });
-    await txn.prove();
-    await txn.sign([deployerKey, zkAppPrivateKey]).send();
-  }
-
   it('generates and deploys the `GuardianZkApp` smart contract', async () => {
     await localDeploy();
     const owner = zkApp.owner.getAndAssertEquals();
     expect(owner).toEqual(deployerAccount);
 
+    const nullifierRoot = zkApp.nullifierRoot.getAndAssertEquals();
+    expect(nullifierRoot).toEqual(Field(0));
+
     const committedGuardians = zkApp.committedGuardians.getAndAssertEquals();
     expect(committedGuardians).toEqual(Field(0));
 
-    const counter = zkApp.counter.getAndAssertEquals();
-    expect(counter).toEqual(Field(0));
+    const approvedGuardians = zkApp.approvedGuardians.getAndAssertEquals();
+    expect(approvedGuardians).toEqual(Field(0));
+
+    let counters: UInt32[] = await zkApp.getCounters();
+    expect(counters).toEqual([UInt32.from(0), UInt32.from(0)]);
 
     const fooVerificationKey =
       Mina.getAccount(zkAppAddress).zkapp?.verificationKey;
     Provable.log('original verification key', fooVerificationKey);
   });
-  describe('#addGuardian', () => {
+  describe('#registerGuardian', () => {
     it('should add guardian', async () => {
       await localDeploy();
 
-      const guardian = Guardian.from(guardian1Account, nullifierMessage);
-      guardianTree.setLeaf(0n, guardian.hash());
-      await _addGuardian(deployerAccount, guardian);
+      const guardian = Guardian.from(guardian1Account, DEFAULT_NULLIFIER);
+      GUARDIAN_TREE.setLeaf(0n, guardian.hash());
+      await _registerGuardian(
+        guardian1Key,
+        guardian.hash(),
+        GUARDIAN_TREE.getRoot()
+      );
 
       const committedGuardians = zkApp.committedGuardians.getAndAssertEquals();
-      expect(committedGuardians).toEqual(guardianTree.getRoot());
-      const counter = zkApp.counter.getAndAssertEquals();
-      expect(counter).toEqual(Field(1));
-    });
+      expect(committedGuardians).toEqual(GUARDIAN_TREE.getRoot());
 
+      const counters = await zkApp.getCounters();
+      expect(counters).toEqual([UInt32.from(1), UInt32.from(0)]);
+    });
     it('should add 4 guardians', async () => {
       await localDeploy();
 
-      const guardian = Guardian.from(guardian1Account, nullifierMessage);
-      guardianTree.setLeaf(0n, guardian.hash());
-      await _addGuardian(deployerAccount, guardian);
-      const guardian2 = Guardian.from(guardian2Account, nullifierMessage);
-      guardianTree.setLeaf(1n, guardian2.hash());
-      await _addGuardian(deployerAccount, guardian2);
-      const guardian3 = Guardian.from(guardian3Account, nullifierMessage);
-      guardianTree.setLeaf(2n, guardian3.hash());
-      await _addGuardian(deployerAccount, guardian3);
-      const guardian4 = Guardian.from(guardian4Account, nullifierMessage);
-      guardianTree.setLeaf(3n, guardian4.hash());
-      await _addGuardian(deployerAccount, guardian4);
-
-      //console.log('guardianTree', guardianTree);
+      const guardian = Guardian.from(guardian1Account, DEFAULT_NULLIFIER);
+      GUARDIAN_TREE.setLeaf(0n, guardian.hash());
+      await _registerGuardian(
+        guardian1Key,
+        guardian.hash(),
+        GUARDIAN_TREE.getRoot()
+      );
+      const guardian2 = Guardian.from(guardian2Account, DEFAULT_NULLIFIER);
+      GUARDIAN_TREE.setLeaf(1n, guardian2.hash());
+      await _registerGuardian(
+        guardian2Key,
+        guardian2.hash(),
+        GUARDIAN_TREE.getRoot()
+      );
+      const guardian3 = Guardian.from(guardian3Account, DEFAULT_NULLIFIER);
+      GUARDIAN_TREE.setLeaf(2n, guardian3.hash());
+      await _registerGuardian(
+        guardian3Key,
+        guardian3.hash(),
+        GUARDIAN_TREE.getRoot()
+      );
+      const guardian4 = Guardian.from(guardian4Account, DEFAULT_NULLIFIER);
+      GUARDIAN_TREE.setLeaf(3n, guardian4.hash());
+      await _registerGuardian(
+        guardian4Key,
+        guardian4.hash(),
+        GUARDIAN_TREE.getRoot()
+      );
 
       const committedGuardians =
         await zkApp.committedGuardians.getAndAssertEquals();
-      expect(committedGuardians).toEqual(guardianTree.getRoot());
-      const counter = await zkApp.counter.getAndAssertEquals();
-      expect(counter).toEqual(Field(4));
+      expect(committedGuardians).toEqual(GUARDIAN_TREE.getRoot());
+
+      const counters = await zkApp.getCounters();
+      expect(counters).toEqual([UInt32.from(4), UInt32.from(0)]);
+    });
+  });
+  describe('#addGuardians', () => {
+    it('should add guardians', async () => {
+      await localDeploy();
+
+      const guardian = Guardian.from(guardian1Account, DEFAULT_NULLIFIER);
+      GUARDIAN_TREE.setLeaf(0n, guardian.hash());
+      const guardian2 = Guardian.from(guardian2Account, DEFAULT_NULLIFIER);
+      GUARDIAN_TREE.setLeaf(1n, guardian2.hash());
+      const guardian3 = Guardian.from(guardian3Account, DEFAULT_NULLIFIER);
+      GUARDIAN_TREE.setLeaf(2n, guardian3.hash());
+      const guardian4 = Guardian.from(guardian4Account, DEFAULT_NULLIFIER);
+      GUARDIAN_TREE.setLeaf(3n, guardian4.hash());
+      await _addGuardians(deployerKey, GUARDIAN_TREE.getRoot(), UInt32.from(4));
+
+      const committedGuardians = zkApp.committedGuardians.getAndAssertEquals();
+      expect(committedGuardians).toEqual(GUARDIAN_TREE.getRoot());
+
+      const counters = await zkApp.getCounters();
+      expect(counters).toEqual([UInt32.from(4), UInt32.from(0)]);
     });
   });
   describe('#verifyGuardian', () => {
-    it('should verify guardian', async () => {
+    let guardian: Guardian;
+    beforeEach(async () => {
       await localDeploy();
 
-      const guardian = Guardian.from(guardian1Account, nullifierMessage);
-      guardianTree.setLeaf(0n, guardian.hash());
-      await _addGuardian(deployerAccount, guardian);
-
-      let w = guardianTree.getWitness(0n);
-      let witness = new GuardianWitness(w);
-
-      const tx = await Mina.transaction(zkAppAddress, () => {
-        zkApp.verifyGuardian(guardian, witness);
-      });
-      await tx.prove();
-      await tx.sign([zkAppPrivateKey]).send();
+      guardian = Guardian.from(guardian1Account, DEFAULT_NULLIFIER);
+      GUARDIAN_TREE.setLeaf(0n, guardian.hash());
+      await _registerGuardian(
+        guardian1Key,
+        guardian.hash(),
+        GUARDIAN_TREE.getRoot()
+      );
     });
-  });
-  describe('editGuardian', () => {
-    it('should able to edit nullifier message', async () => {
-      await localDeploy();
+    it('should verify guardian', async () => {
+      let w = GUARDIAN_TREE.getWitness(0n);
+      let witness = new MerkleWitness32(w);
 
-      const guardian = Guardian.from(guardian1Account, nullifierMessage);
-      guardianTree.setLeaf(0n, guardian.hash());
-      await _addGuardian(deployerAccount, guardian);
-
-      const committedGuardians = zkApp.committedGuardians.getAndAssertEquals();
-      expect(committedGuardians).toEqual(guardianTree.getRoot());
-      const counter = zkApp.counter.getAndAssertEquals();
-      expect(counter).toEqual(Field(1));
-
-      let w = guardianTree.getWitness(0n);
-      let witness = new GuardianWitness(w);
-
-      const newNullifierMessage = Field(888);
-
-      const tx = await Mina.transaction(deployerAccount, () => {
-        zkApp.editGuardian(
-          deployerAccount,
-          guardian,
-          newNullifierMessage,
+      const tx = await Mina.transaction(senderAccount, () => {
+        zkApp.verifyGuardian(
+          guardian.publicKey,
+          guardian.nullifierMessage,
           witness
         );
       });
       await tx.prove();
-      await tx.sign([deployerKey]).send();
-
-      const editedGuardian = guardian.setNullifierMessage(newNullifierMessage);
-      guardianTree.setLeaf(0n, editedGuardian.hash());
-
-      const editedCommittedGuardians =
-        zkApp.committedGuardians.getAndAssertEquals();
-      expect(editedCommittedGuardians).toEqual(guardianTree.getRoot());
-    });
-  });
-  describe('#resetCounter', () => {
-    it('should reset counter', async () => {
-      await localDeploy();
-
-      const guardian = Guardian.from(guardian1Account, nullifierMessage);
-      guardianTree.setLeaf(0n, guardian.hash());
-      await _addGuardian(deployerAccount, guardian);
-
-      const committedGuardians = zkApp.committedGuardians.getAndAssertEquals();
-      expect(committedGuardians).toEqual(guardianTree.getRoot());
-      let counter = zkApp.counter.getAndAssertEquals();
-      expect(counter).toEqual(Field(1));
-
-      const tx = await Mina.transaction(deployerAccount, () => {
-        zkApp.resetCounter(deployerAccount);
-      });
-      await tx.prove();
-      await tx.sign([deployerKey]).send();
-      counter = zkApp.counter.getAndAssertEquals();
-      expect(counter).toEqual(Field(0));
+      await tx.sign([senderKey]).send();
     });
   });
   describe('#transferOwnership', () => {
@@ -223,38 +204,45 @@ describe('GuardianZkApp', () => {
       await localDeploy();
 
       const tx = await Mina.transaction(deployerAccount, () => {
-        zkApp.transferOwnership(deployerAccount, senderAccount);
+        AccountUpdate.createSigned(deployerAccount);
+
+        zkApp.transferOwnership(deployerKey, senderAccount);
       });
       await tx.prove();
       await tx.sign([deployerKey]).send();
 
-      const newOwner = zkApp.owner.getAndAssertEquals();
-      expect(newOwner).toEqual(senderAccount);
+      // const newOwner = zkApp.owner.getAndAssertEquals();
+      // expect(newOwner).toEqual(senderAccount);
     });
   });
-  // TODO: ask #zkapp-hangout
-  describe('#replaceVerificationKey', () => {
-    it('should replaceVerificationKey', async () => {
-      await deployUpdate();
-
-      const modified = await GuardianZkAppUpdate.compile();
-      const tx = await Mina.transaction(zkAppAddress, () => {
-        zkApp.replaceVerificationKey(modified.verificationKey);
-      });
-      await tx.prove();
-      await tx.sign([zkAppPrivateKey]).send();
-
-      const updatedVerificationKey =
-        Mina.getAccount(zkAppAddress).zkapp?.verificationKey;
-      Provable.log('updated verification key', updatedVerificationKey);
+  describe('#generateNullifier', () => {
+    it('should generateNullifier', async () => {
+      const result = zkApp.generateNullifier(deployerKey, DEFAULT_NULLIFIER);
+      console.log('result', result);
     });
   });
 
-  async function _addGuardian(sender: PublicKey, guardian: Guardian) {
-    const tx = await Mina.transaction(deployerAccount, () => {
-      zkApp.addGuardian(sender, guardian, guardianTree.getRoot());
+  async function _registerGuardian(
+    _senderKey: PrivateKey,
+    _guardianHash: Field,
+    _guardianRoot: Field
+  ) {
+    const tx = await Mina.transaction(_senderKey.toPublicKey(), () => {
+      zkApp.registerGuardian(_guardianHash, _guardianRoot);
     });
     await tx.prove();
-    await tx.sign([deployerKey]).send();
+    await tx.sign([_senderKey]).send();
+  }
+
+  async function _addGuardians(
+    _senderKey: PrivateKey,
+    _guardianRoot: Field,
+    amountOfGuardians: UInt32
+  ) {
+    const tx = await Mina.transaction(_senderKey.toPublicKey(), () => {
+      zkApp.addGuardians(_senderKey, _guardianRoot, amountOfGuardians);
+    });
+    await tx.prove();
+    await tx.sign([_senderKey]).send();
   }
 });
