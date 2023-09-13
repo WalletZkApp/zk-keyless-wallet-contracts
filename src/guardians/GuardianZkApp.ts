@@ -19,7 +19,7 @@ import {
   AccountUpdate,
   MerkleTree,
   UInt64,
-} from 'snarkyjs';
+} from 'o1js';
 import { Guardian } from './Guardian.js';
 import { MerkleWitness32 } from '../storage/offchain-storage.js';
 import { DEFAULT_NULLIFIER } from '../constant.js';

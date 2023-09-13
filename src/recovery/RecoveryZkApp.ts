@@ -13,7 +13,7 @@ import {
   provablePure,
   VerificationKey,
   UInt32,
-} from 'snarkyjs';
+} from 'o1js';
 
 import { Guardian } from '../guardians/Guardian.js';
 import { RECOVERY_STATUS } from '../constant.js';

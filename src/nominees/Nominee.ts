@@ -1,4 +1,4 @@
-import { Field, PublicKey, Poseidon, Struct } from 'snarkyjs';
+import { Field, PublicKey, Poseidon, Struct } from 'o1js';
 
 export class Nominee extends Struct({
   publicKey: PublicKey,

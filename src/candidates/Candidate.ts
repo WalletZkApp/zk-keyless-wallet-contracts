@@ -1,4 +1,4 @@
-import { Field, Poseidon, Struct, MerkleWitness } from 'snarkyjs';
+import { Field, Poseidon, Struct, MerkleWitness } from 'o1js';
 export { Candidate, CandidateWitness };
 
 class CandidateWitness extends MerkleWitness(8) {

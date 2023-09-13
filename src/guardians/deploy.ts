@@ -19,7 +19,7 @@ import {
   PublicKey,
   UInt64,
   fetchAccount,
-} from 'snarkyjs';
+} from 'o1js';
 import fs from 'fs/promises';
 import { GuardianZkApp } from './GuardianZkApp.js';
 
