@@ -1,4 +1,4 @@
-import { Bool, Field, Poseidon, PrivateKey, PublicKey } from 'snarkyjs';
+import { Bool, Field, Poseidon, PrivateKey, PublicKey } from 'o1js';
 import { Guardian } from './Guardian.js';
 import { DEFAULT_NULLIFIER } from '../constant.js';
 

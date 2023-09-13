@@ -7,7 +7,7 @@ import {
   PublicKey,
   Provable,
   UInt32,
-} from 'snarkyjs';
+} from 'o1js';
 import { GuardianZkApp } from './GuardianZkApp.js';
 import { Guardian } from './Guardian.js';
 import { DEFAULT_NULLIFIER } from '../constant.js';

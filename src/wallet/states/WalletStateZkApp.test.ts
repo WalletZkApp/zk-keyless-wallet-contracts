@@ -8,7 +8,7 @@ import {
   PublicKey,
   UInt64,
   UInt32,
-} from 'snarkyjs';
+} from 'o1js';
 import { TokenGenerator } from 'totp-generator-ts';
 import {
   DEFAULT_TRANSACTION_LIMIT,

@@ -12,7 +12,7 @@
  * Build the project: `$ npm run build`
  * Run with node:     `$ node build/src/interact.js <deployAlias>`.
  */
-import { Mina, PrivateKey, PublicKey, UInt64, fetchAccount } from 'snarkyjs';
+import { Mina, PrivateKey, PublicKey, UInt64, fetchAccount } from 'o1js';
 import fs from 'fs/promises';
 import { GuardianZkApp } from './GuardianZkApp.js';
 

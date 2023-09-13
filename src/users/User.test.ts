@@ -1,4 +1,4 @@
-import { Field, Poseidon, PrivateKey, PublicKey } from 'snarkyjs';
+import { Field, Poseidon, PrivateKey, PublicKey } from 'o1js';
 import { User } from './User.js';
 
 describe('User', () => {

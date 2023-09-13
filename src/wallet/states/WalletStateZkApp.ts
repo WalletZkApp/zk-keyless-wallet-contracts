@@ -12,7 +12,7 @@ import {
   ProvablePure,
   provablePure,
   UInt32,
-} from 'snarkyjs';
+} from 'o1js';
 import { PackedUInt32Factory } from 'snarkyjs-pack';
 import {
   DEFAULT_TRANSACTION_LIMIT,

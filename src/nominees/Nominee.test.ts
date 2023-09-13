@@ -1,4 +1,4 @@
-import { Field, Poseidon, PrivateKey, PublicKey } from 'snarkyjs';
+import { Field, Poseidon, PrivateKey, PublicKey } from 'o1js';
 import { DEFAULT_NULLIFIER } from '../constant.js';
 import { Nominee } from './Nominee.js';
 
