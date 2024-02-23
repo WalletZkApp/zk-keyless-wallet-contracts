@@ -1,4 +1,4 @@
-import { AccountUpdate, Mina, PrivateKey } from 'snarkyjs';
+import { AccountUpdate, Mina, PrivateKey } from 'o1js';
 import fs from 'fs/promises';
 import { RecoveryZkApp } from './RecoveryZkApp';
 

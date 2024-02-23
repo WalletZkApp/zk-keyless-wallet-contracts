@@ -13,7 +13,7 @@ import {
   state,
   UInt32,
   UInt64,
-} from 'snarkyjs';
+} from 'o1js';
 // import { WALLET_STATUS } from '../constant';
 import { WalletStateZkApp } from './states/index.js';
 import { Guardian, GuardianZkApp } from '../guardians/index.js';

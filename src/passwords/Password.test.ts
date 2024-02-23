@@ -1,4 +1,4 @@
-import { Field, Poseidon, UInt64 } from 'snarkyjs';
+import { Field, Poseidon, UInt64 } from 'o1js';
 import { Password } from './Password.js';
 
 const SALT = Math.floor(Math.random() * 999999);

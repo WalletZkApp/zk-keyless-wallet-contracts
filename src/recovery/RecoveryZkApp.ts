@@ -13,7 +13,8 @@ import {
   provablePure,
   VerificationKey,
   UInt32,
-} from 'snarkyjs';
+  TransactionVersion,
+} from 'o1js';
 
 import { Guardian } from '../guardians/Guardian.js';
 import { RECOVERY_STATUS } from '../constant.js';
@@ -106,7 +107,10 @@ class RecoveryZkApp extends SmartContract implements IRecoveryZkApp {
       access: Permissions.proof(),
       editActionState: Permissions.proofOrSignature(),
       editState: Permissions.proofOrSignature(),
-      setVerificationKey: Permissions.proofOrSignature(),
+      setVerificationKey: {
+        auth: Permissions.proofOrSignature(),
+        txnVersion: TransactionVersion.current(),
+      },
     });
 
     this.status.set(Field(RECOVERY_STATUS.DEPLOYED));

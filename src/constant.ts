@@ -1,4 +1,4 @@
-import { Field, UInt64 } from 'snarkyjs';
+import { Field, UInt64 } from 'o1js';
 
 export const MAX_MERKLE_TREE_HEIGHT = 32;
 export const DEFAULT_NULLIFIER = Field(777);

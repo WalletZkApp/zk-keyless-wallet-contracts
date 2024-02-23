@@ -19,11 +19,12 @@ import {
   AccountUpdate,
   MerkleTree,
   UInt64,
-} from 'snarkyjs';
+  TransactionVersion,
+} from 'o1js';
 import { Guardian } from './Guardian.js';
 import { MerkleWitness32 } from '../storage/offchain-storage.js';
 import { DEFAULT_NULLIFIER } from '../constant.js';
-import { PackedUInt32Factory } from 'snarkyjs-pack';
+import { PackedUInt32Factory } from 'o1js-pack';
 
 export { GuardianZkApp, IGuardianZkApp, PackedLimits };
 
@@ -121,7 +122,10 @@ class GuardianZkApp extends SmartContract implements IGuardianZkApp {
       ...Permissions.default(),
       editActionState: Permissions.proofOrSignature(),
       editState: Permissions.proofOrSignature(),
-      setVerificationKey: Permissions.proofOrSignature(),
+      setVerificationKey: {
+        auth: Permissions.proofOrSignature(),
+        txnVersion: TransactionVersion.current(),
+      },
       send: Permissions.proofOrSignature(),
       incrementNonce: Permissions.proofOrSignature(),
     });
@@ -341,7 +345,7 @@ class GuardianZkApp extends SmartContract implements IGuardianZkApp {
     const guardiansCounter: UInt32 = unpacked[0];
     unpacked[0] = guardiansCounter.add(1);
 
-    const newPackedLimits: PackedLimits = PackedLimits.fromAuxiliary(unpacked);
+    const newPackedLimits: PackedLimits = PackedLimits.fromUInt32s(unpacked);
     this.counters.set(newPackedLimits);
   }
 
@@ -355,7 +359,7 @@ class GuardianZkApp extends SmartContract implements IGuardianZkApp {
     const approvedGuardiansCounter: UInt32 = unpacked[1];
     unpacked[1] = approvedGuardiansCounter.add(1);
 
-    const newPackedLimits: PackedLimits = PackedLimits.fromAuxiliary(unpacked);
+    const newPackedLimits: PackedLimits = PackedLimits.fromUInt32s(unpacked);
     this.counters.set(newPackedLimits);
   }
 
@@ -370,7 +374,7 @@ class GuardianZkApp extends SmartContract implements IGuardianZkApp {
     const guardiansCounter: UInt32 = unpacked[0];
     unpacked[0] = guardiansCounter.add(amount);
 
-    const newPackedLimits: PackedLimits = PackedLimits.fromAuxiliary(unpacked);
+    const newPackedLimits: PackedLimits = PackedLimits.fromUInt32s(unpacked);
     this.counters.set(newPackedLimits);
   }
 
@@ -385,7 +389,7 @@ class GuardianZkApp extends SmartContract implements IGuardianZkApp {
     const approvedGuardiansCounter: UInt32 = unpacked[1];
     unpacked[1] = approvedGuardiansCounter.add(amount);
 
-    const newPackedLimits: PackedLimits = PackedLimits.fromAuxiliary(unpacked);
+    const newPackedLimits: PackedLimits = PackedLimits.fromUInt32s(unpacked);
     this.counters.set(newPackedLimits);
   }
 }

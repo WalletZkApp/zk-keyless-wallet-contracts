@@ -1,11 +1,7 @@
-import { Field, Poseidon, Struct, MerkleWitness } from 'snarkyjs';
+import { Field, Poseidon, Struct, MerkleWitness } from 'o1js';
 export { Candidate, CandidateWitness };
 
-class CandidateWitness extends MerkleWitness(8) {
-  static empty(): CandidateWitness {
-    throw new Error('Method not implemented.');
-  }
-}
+class CandidateWitness extends MerkleWitness(8) {}
 
 class Candidate extends Struct({
   key: Field, // Tree index

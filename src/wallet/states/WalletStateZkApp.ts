@@ -12,8 +12,9 @@ import {
   ProvablePure,
   provablePure,
   UInt32,
-} from 'snarkyjs';
-import { PackedUInt32Factory } from 'snarkyjs-pack';
+  TransactionVersion,
+} from 'o1js';
+import { PackedUInt32Factory } from 'o1js-pack';
 import {
   DEFAULT_TRANSACTION_LIMIT,
   DEFAULT_DAILY_LIMIT,
@@ -119,7 +120,10 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
       access: Permissions.proofOrSignature(),
       editActionState: Permissions.proofOrSignature(),
       editState: Permissions.proofOrSignature(),
-      setVerificationKey: Permissions.proofOrSignature(),
+      setVerificationKey: {
+        auth: Permissions.proofOrSignature(),
+        txnVersion: TransactionVersion.current(),
+      },
     });
     this.paused.set(Bool(false));
 
@@ -259,7 +263,7 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
     const transactionLimit: UInt32 = unpacked[1];
     unpacked[1] = newTransactionLimit;
 
-    const newPackedLimits: PackedLimits = PackedLimits.fromAuxiliary(unpacked);
+    const newPackedLimits: PackedLimits = PackedLimits.fromUInt32s(unpacked);
     this.packedLimits.set(newPackedLimits);
 
     this.emitEvent('TransactionLimitChanged', {
@@ -285,7 +289,7 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
     const dailyLimit: UInt32 = unpacked[2];
     unpacked[2] = newDailyLimit;
 
-    const newPackedLimits: PackedLimits = PackedLimits.fromAuxiliary(unpacked);
+    const newPackedLimits: PackedLimits = PackedLimits.fromUInt32s(unpacked);
     this.packedLimits.set(newPackedLimits);
 
     this.emitEvent('DailyLimitChanged', {
@@ -313,7 +317,7 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
     packedLimits.packed.assertEquals(PackedLimits.pack(unpacked));
     unpacked[3] = newCurrentPeriodAmount;
 
-    const newPackedLimits: PackedLimits = PackedLimits.fromAuxiliary(unpacked);
+    const newPackedLimits: PackedLimits = PackedLimits.fromUInt32s(unpacked);
     this.packedLimits.set(newPackedLimits);
 
     return Bool(true);
@@ -351,7 +355,7 @@ class WalletStateZkApp extends SmartContract implements IWalletStateZkApp {
       // period.add(now).get().assertLessThanOrEqual(now);
       // this.currentPeriodEnd.set(period.add(now));
       // unpacked[3] = UInt32.from(0);
-      // const newPackedLimits: PackedLimits = PackedLimits.fromAuxiliary(unpacked);
+      // const newPackedLimits: PackedLimits = PackedLimits.fromUInt32s(unpacked);
       // this.packedLimits.set(newPackedLimits);
     }
   }

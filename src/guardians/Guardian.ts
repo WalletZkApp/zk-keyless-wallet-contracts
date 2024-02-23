@@ -1,4 +1,4 @@
-import { Field, PublicKey, Poseidon, Struct, Bool } from 'snarkyjs';
+import { Field, PublicKey, Poseidon, Struct, Bool } from 'o1js';
 
 export class Guardian extends Struct({
   publicKey: PublicKey,

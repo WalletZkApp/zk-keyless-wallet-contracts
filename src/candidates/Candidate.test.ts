@@ -1,4 +1,4 @@
-import { Field, MerkleTree, PrivateKey } from 'snarkyjs';
+import { Field, MerkleTree, PrivateKey } from 'o1js';
 import { Guardian } from '../guardians/Guardian.js';
 import { Candidate } from './Candidate.js';
 import { DEFAULT_NULLIFIER, MAX_MERKLE_TREE_HEIGHT } from '../constant.js';
